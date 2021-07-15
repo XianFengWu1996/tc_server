@@ -1,0 +1,13 @@
+{
+	"folders": [
+		{
+			"path": "../../.."
+		},
+		{
+			"path": "../../../../../../../Downloads/TAIPEI-WEB-main"
+		}
+	],
+	"settings": {
+		"liveServer.settings.multiRootWorkspaceName": "TAIPEI-WEB-main"
+	}
+}
