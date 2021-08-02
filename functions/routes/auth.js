@@ -223,8 +223,8 @@ router.post("/get_report_old", async(req, res) => {
           discount: Math.round((summary.discount + data.pointUsed + Number.EPSILON) * 100) / 100,
           tax:  Math.round((summary.tax + data.tax + Number.EPSILON) * 100) / 100,
           tip:  Math.round((summary.tip + data.tip + Number.EPSILON) * 100) / 100,
-          delivery:  Math.round((summary.delivery + data.delivery + Number.EPSILON) * 100) / 100,
-          refund: Math.round((summary.refund + data.refundAmount + Number.EPSILON) * 100) / 100,
+          delivery:  Math.round((summary.delivery + data.deliveryFee + Number.EPSILON) * 100) / 100,
+          refund: Math.round((summary.refund + data.refund_amount + Number.EPSILON) * 100) / 100,
           total:  Math.round(((summary.total + data.total) + Number.EPSILON) * 100) / 100,
         }
       }) 
