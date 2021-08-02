@@ -25,10 +25,10 @@ router.post("/place_order", async(req, res) => {
 
     // store closed
     const { day, month, year, timestamp, storeIsOpen } = time();
-    // if(!storeIsOpen){
-    //   res.status(400).send({ error: 'Store is closed at this time.'});
-    //   return;
-    // }
+    if(!storeIsOpen){
+      res.status(400).send({ error: 'Store is closed at this time.'});
+      return;
+    }
 
     const orderId = randomstring.generate(18);
     let orderDetails, sqPayment, restaurantOrderDetails;
@@ -157,9 +157,11 @@ router.post("/place_order", async(req, res) => {
 
       batch.set(admin.firestore().collection(`${development ? 'orderTest' : 'order' }/${year}/${month}`)
         .doc(`${orderId}`), restaurantOrderDetails);
-      batch.set(admin.firestore().collection(`${development ? 'usersTest' : 'user' }/${contact.userId}/order`)
+      batch.set(admin.firestore().collection(`${development ? 'newOrderTest' : 'newOrder'}`)
+      .doc(`${orderId}`), restaurantOrderDetails);
+      batch.set(admin.firestore().collection(`${development ? 'usersTest' : 'users' }/${contact.userId}/order`)
         .doc(`${orderId}`), orderDetails);
-      batch.update(admin.firestore().collection(`${development ? 'usersTest' : 'user' }/${contact.userId}/rewards`)
+      batch.set(admin.firestore().collection(`${development ? 'usersTest' : 'users' }/${contact.userId}/rewards`)
         .doc('points'), {
           'point': tempPoint,
           'pointDetails': tempPointDetail
@@ -192,7 +194,7 @@ router.post("/place_order", async(req, res) => {
     showPaymentType = 'Pay In Cash'
   } else if (payment.type == 'card'){
     showPaymentType = 'Pay Card In Store'
-  } else if(payment.type == 'Prepaid' || payment.type == 'prepaid'){
+  } else if(payment.type == 'Prepaid' || payment.type == 'prepaid' || payment.type == 'one-time'){
     showPaymentType = 'Prepaid'
   }
   let orderString = [];
@@ -236,7 +238,7 @@ router.post("/place_order", async(req, res) => {
     var htmlToSend = template(replacements);
     var mailOptions = {
       from: 'Taipei Cuisine <taipeicuisine68@gmail.com>',
-      to: 'shawnwu1996@gmail.com',
+      to: contact.email,
       subject: `Order Confirmation (${orderId})`,
       html: htmlToSend,
       attachments: [{

@@ -377,7 +377,7 @@ router.post("/register_card", async (req, res) => {
         .collection(
           `${development ? "usersTest" : "users"}/${
             user.userId
-          }/customer_information`
+          }/customer`
         )
         .doc("details")
         .update({
@@ -471,7 +471,7 @@ router.post("/create_customer", async (req, res) => {
           .collection(
             `${
               development ? "usersTest" : "users"
-            }/${userId}/customer_information`
+            }/${userId}/customer`
           )
           .doc("details")
           .update({
@@ -515,7 +515,7 @@ router.post("/remove_card", async (req, res) => {
 
       await admin
         .firestore()
-        .collection(`${development ? 'usersTest' : 'users'}/${userId}/customer_information`)
+        .collection(`${development ? 'usersTest' : 'users'}/${userId}/customer`)
         .doc("details")
         .update({
           billing: {

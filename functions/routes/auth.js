@@ -4,111 +4,60 @@ const { checkRequestKey, getTwilioKeys } = require("./keys");
 const admin = require("firebase-admin");
 const twilio = require("twilio");
 
-const setNewUser = (userId, res) => {
-  let batch = admin.firestore().batch();
-  if(userId){
-  // set the neccessary information for the customer information section
-  batch.set(
-    admin.firestore().collection(`/usersTest/${userId}/customer_information`)
-    .doc("details"),
-    {
-      address: {
-        apt: "",
-        business: "",
-        address: "",
-        zipcode: "",
-        deliveryFee: 0,
-      },
-      billing: {
-        cards: [],
-        customerId: "",
-      },
-      customer: {
-        firstName: "",
-        lastName: "",
-        phone: "",
-        verifiedNumbers: [],
-      },
-      language: "english"
-    }
-  );
-  // set the neccessary information for rewards
-  batch.set(
-    admin
-      .firestore()
-      .collection(`/usersTest/${userId}/rewards`)
-      .doc("points"),
-    {
-      point: 0,
-      pointDetails: [],
-    }
-  );
-
-  // commit the batch
-  batch.commit()
-    .catch((e) => {
-      res.status(400).send({ error : 'Failed to create user data...'});
-      return;
-    });
-  } else {
-    res.status(400).send({ error : 'Request denied by server..'});
+const setCustomer = (userId, res, development) => {
+  admin.firestore().collection(`/${development ? 'usersTest' : 'users'}/${userId}/customer`).doc('details').set({
+    address: {
+      apt: "",
+      business: "",
+      address: "",
+      zipcode: "",
+      deliveryFee: 0,
+    },
+    billing: {
+      cards: [],
+      customerId: "",
+    },
+    customer: {
+      name: '',
+      phone: "",
+      verifiedNumbers: [],
+    },
+    language: "english"
+  }).catch((e) => {
+    res.status(400).send({ error : 'Failed to create user data...'});
     return;
-  }
+  })
 }
 
-// new
+const setReward = (userId, res, development) => {
+  admin.firestore().collection(`/${development ? 'usersTest' : 'users'}/${userId}/rewards`).doc('points').set({
+    point: 0,
+      pointDetails: [],
+  }).catch(e => {
+    res.status(400).send({ error : 'Failed to create user data...'});
+    return;
+  })
+}
+
 router.post("/signin", async (req, res) => {
     try {
       // create the batch
       const { userId, env } = req.body;
       let development = env === 'development';
-      let customerInfoRef = `${development ? 'usersTest' : 'users'}/${userId}/customer_information`;
+      let customerInfoRef = `${development ? 'usersTest' : 'users'}/${userId}/customer`;
       let rewardInfoRef = `${development ? 'usersTest' : 'users'}/${userId}/rewards`;
       let orderInfoRef = `${development ? 'usersTest' : 'users'}/${userId}/order`;
 
       let userDetail = (await admin.firestore().collection(customerInfoRef).get()).docs;
+      let rewardDetail = (await admin.firestore().collection(rewardInfoRef).get()).docs;
+
       if(userDetail.length === 0){
-        setNewUser(userId, res);
-        let server = (await admin.firestore().collection('admin').doc('details').get()).data().server;
-  
-        res.status(200).send({ 
-          result: {
-              customerInfo: {
-                address: {
-                  apt: "",
-                  business: "",
-                  address: "",
-                  zipcode: "",
-                  deliveryFee: 0,
-                },
-                billing: {
-                  cards: [],
-                  customerId: "",
-                },
-                customer: {
-                  name: "",
-                  phone: "",
-                  verifiedNumbers: [],
-                },
-                language: "english",
-                
-              }, // billing information 
-              rewardInfo: {
-                point: 0,
-                pointDetails: [],
-              }, // reward information
-              orderList: {}, // order information
-              server: {
-                isAdmin: server.adminId.includes(userId),
-                message: server.message,
-                requestKey: server.requestKey,
-                status: server.status,
-                rewardPercentage: server.rewardPercentage,
-                key: server.key
-              }
-          }
-        })
-      } else {
+        setCustomer(userId, res, development);
+      }
+
+      if(rewardDetail.length === 0){
+        setReward(userId, res, development);
+      }
         let customerInfo, rewardInfo, server, orderList = [];
         // retrieve all essential information about the server
         await admin.firestore().runTransaction(async (transaction) => {
@@ -138,7 +87,6 @@ router.post("/signin", async (req, res) => {
                 key: server.key
               }
         }})
-      }
     } catch (error) {
       console.log(error);
       // if any error, show this generic error message
@@ -194,8 +142,6 @@ router.post("/send_code", async (req, res) => {
   
 });
 
-
- 
 router.post("/get_report", async(req, res) => {
   try {
     // Check the authorized header sent with the request
@@ -204,7 +150,7 @@ router.post("/get_report", async(req, res) => {
     // Only authroized request will proceed
     if (authroized) {
       const { month, year} = req.body
-      let orders =  (await ( admin.firestore().collection(`orderTest/${year}/${month}`).orderBy('order.createdAt', 'desc')).get()).docs;
+      let orders =  (await ( admin.firestore().collection(`order/${year}/${month}`).orderBy('order.createdAt', 'desc')).get()).docs;
 
       let summary = {
         subtotal: 0,
@@ -230,6 +176,56 @@ router.post("/get_report", async(req, res) => {
           delivery:  Math.round((summary.delivery + data.order.delivery + Number.EPSILON) * 100) / 100,
           refund: Math.round((summary.refund + data.orderStatus.refundAmount + Number.EPSILON) * 100) / 100,
           total:  Math.round(((summary.total + data.order.total) + Number.EPSILON) * 100) / 100,
+        }
+      }) 
+
+      res.send({
+        orders: tempList,
+        summary
+      })
+    } else {
+      res.send({ error: 'Not authorized'})
+    }
+  } catch (error) {
+    console.log(error)
+    res.send({ error: error.message ? error.message : 'Fail to get report.'})
+  }
+})
+
+router.post("/get_report_old", async(req, res) => {
+  try {
+    // Check the authorized header sent with the request
+    let authroized = await checkRequestKey(req.headers.authorization);
+
+    // Only authroized request will proceed
+    if (authroized) {
+      const { month, year} = req.body
+      let orders =  (await ( admin.firestore().collection(`order/${year}/${month}`).orderBy('createdAt', 'desc')).get()).docs;
+
+      let summary = {
+        subtotal: 0,
+        discount: 0,
+        tax: 0,
+        tip: 0,
+        delivery: 0,
+        refund: 0,
+        total: 0,
+      }
+
+      tempList = [];
+
+      orders.map(order => {    
+        let data = order.data();
+
+        tempList.push(data);
+        summary = {
+          subtotal: Math.round((summary.subtotal + (data.subtotal - data.lunchDiscount) + Number.EPSILON) * 100) / 100,
+          discount: Math.round((summary.discount + data.pointUsed + Number.EPSILON) * 100) / 100,
+          tax:  Math.round((summary.tax + data.tax + Number.EPSILON) * 100) / 100,
+          tip:  Math.round((summary.tip + data.tip + Number.EPSILON) * 100) / 100,
+          delivery:  Math.round((summary.delivery + data.delivery + Number.EPSILON) * 100) / 100,
+          refund: Math.round((summary.refund + data.refundAmount + Number.EPSILON) * 100) / 100,
+          total:  Math.round(((summary.total + data.total) + Number.EPSILON) * 100) / 100,
         }
       }) 
 
