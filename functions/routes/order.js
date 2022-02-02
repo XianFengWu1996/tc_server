@@ -30,6 +30,10 @@ router.post("/place_order", async(req, res) => {
       return;
     }
 
+    if(payment.card.cofID.includes('ccof')){
+      return res.status(400).send({ error: 'Save card processing currently disable, as we are fixing the issue'});
+    }
+
     const orderId = randomstring.generate(18);
     let orderDetails, sqPayment, restaurantOrderDetails;
     let storePayment = Object.keys(payment.card).length === 0 && payment.card.constructor === Object;
@@ -58,6 +62,10 @@ router.post("/place_order", async(req, res) => {
         },
         autocomplete: false,
       });
+
+      if(paymentResult.result.payment.riskEvaluation.riskLevel !== 'NORMAL' || paymentResult.result.payment.riskEvaluation.riskLevel !== 'PENDING'){
+        return res.status(400).send({ error: 'Card is marked as high risk by Square, fail to accept card'});
+      }
       sqPayment = paymentResult.result.payment;   
     }
   
