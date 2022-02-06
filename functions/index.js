@@ -35,7 +35,7 @@ exports.payment_processing = functions.pubsub.schedule('45 22 * * *')
     try {
       const { SQ_TOKEN } = await getSquareSecret('PROD');
       const { month, day } = time();
-
+  
       const client = new Client({
         environment: Environment.Production,
         accessToken: SQ_TOKEN,
@@ -43,11 +43,11 @@ exports.payment_processing = functions.pubsub.schedule('45 22 * * *')
     
       // new
       let newUnprocess = (await admin.firestore().collection('unprocessPayment').doc(`${month}${day}`).get()).data().paymentId;
-
-      if(newUnprocess){
-        newUnprocess.map( async (paymentId)=> { await client.paymentsApi.completePayment(paymentId);})  
-      }
-     
+      newUnprocess.map( async (paymentId) => {
+        await client.paymentsApi.completePayment(paymentId, { }).catch((e) => {
+          console.log(e)
+        });
+      })
     } catch (error) {
       console.error(error)
     }

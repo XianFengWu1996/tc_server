@@ -30,7 +30,8 @@ router.post("/place_order", async(req, res) => {
       return;
     }
 
-    if(payment.card.cofID.includes('ccof')){
+    console.log(payment.card);
+    if(payment.card.cofId.includes('ccof')){
       return res.status(400).send({ error: 'Save card processing currently disable, as we are fixing the issue'});
     }
 
@@ -63,9 +64,15 @@ router.post("/place_order", async(req, res) => {
         autocomplete: false,
       });
 
-      if(paymentResult.result.payment.riskEvaluation.riskLevel !== 'NORMAL' || paymentResult.result.payment.riskEvaluation.riskLevel !== 'PENDING'){
+      console.log(paymentResult.result.payment.riskEvaluation);
+      if(paymentResult.result.payment.riskEvaluation.riskLevel === 'MODERATE'){
         return res.status(400).send({ error: 'Card is marked as high risk by Square, fail to accept card'});
       }
+      
+      if(paymentResult.result.payment.riskEvaluation.riskLevel === 'HIGH'){
+        return res.status(400).send({ error: 'Card is marked as high risk by Square, fail to accept card'});
+      }
+
       sqPayment = paymentResult.result.payment;   
     }
   
@@ -284,29 +291,6 @@ router.post("/place_order", async(req, res) => {
         })
       }
     })
-
-    // customerName,
-    // customerPhone
-    // orderId
-    // paymentMethod
-    // deliveryTitle
-    // deliveryAddress
-    // deliveryCityAndZip
-    // deliveryApt
-    // deliveryBusiness
-    // itemCount
-    // discountTitle
-    // discountAmount
-    // lunchDiscountTitle
-    // lunchDiscountAmount
-    // subtotalAmount
-    // taxAmount
-    // deliveryTitle
-    // deliveryAmount
-    // tipAmount
-    // totalAmount
-    // items 
-
 });
   } catch (errorMessage) {
     console.log(errorMessage);
