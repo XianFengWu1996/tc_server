@@ -30,11 +30,12 @@ router.post("/place_order", async(req, res) => {
       return;
     }
 
-    console.log(payment.card);
-    if(payment.card.cofId.includes('ccof')){
-      return res.status(400).send({ error: 'Save card processing currently disable, as we are fixing the issue'});
+    if(payment.card.cofId){
+      if(payment.card.cofId.includes('ccof')){
+        return res.status(400).send({ error: 'Save card processing currently disable, as we are fixing the issue'});
+      }
     }
-
+    
     const orderId = randomstring.generate(18);
     let orderDetails, sqPayment, restaurantOrderDetails;
     let storePayment = Object.keys(payment.card).length === 0 && payment.card.constructor === Object;
